@@ -142,11 +142,11 @@ then
 
 	#
 	# Set AUTOCNF flag to use it in AUTOSTART scripts
-	#
+	#		#param 通常在/build_px4../src/modules/param/px4_parameters.c
 	if param compare SYS_AUTOCONFIG 1
 	then
-		# Wipe out params except RC* and total flight time
-		param reset_nostart RC* LND_FLIGHT_T_*
+		# Wipe out params except RC*
+		param reset_nostart RC*
 		set AUTOCNF yes
 	else
 		set AUTOCNF no
@@ -302,7 +302,7 @@ then
 	then
 		#
 		# Check if PX4IO present and update firmware if needed
-		#
+		#	#检查PX4IO，如果有必要则更新
 		if [ -f /etc/extras/px4io-v2.bin ]
 		then
 			set IO_FILE /etc/extras/px4io-v2.bin
@@ -406,7 +406,7 @@ then
 	set DATAMAN_OPT ""
 	if ver hwcmp AEROFC_V1
 	then
-		set DATAMAN_OPT -i
+		set DATAMAN_OPT -r
 	fi
 	# waypoint storage
 	# REBOOTWORK this needs to start in parallel
@@ -418,7 +418,7 @@ then
 	#
 	# Sensors System (start before Commander so Preflight checks are properly run)
 	#
-	if [ $HIL == yes ]
+	if [ $HIL == yes ]		#HIL=no
 	then
 		sensors start -hil
 	else
@@ -586,10 +586,10 @@ then
 		fi
 	fi
 
-	if [ $MAVLINK_F == default ]
+	if [ $MAVLINK_F == default ]		#MAVLINK_F = default
 	then
 		# Normal mode, use baudrate 57600 (default) and data rate 1000 bytes/s
-		if [ $TTYS1_BUSY == yes ]
+		if [ $TTYS1_BUSY == yes ]	#TTYS1_BUSY = no
 		then
 			# Start MAVLink on ttyS0, because FMU ttyS1 pins configured as something else
 			set MAVLINK_F "-r 1200 -d /dev/ttyS0"
@@ -597,7 +597,7 @@ then
 			# Exit from nsh to free port for mavlink
 			set EXIT_ON_END yes
 		else
-			set MAVLINK_F "-r 1200"
+			set MAVLINK_F "-r 1200"		# -r 只读
 			# Avoid using ttyS1 for MAVLink on FMUv4
 			if ver hwcmp PX4FMU_V4
 			then
@@ -648,8 +648,8 @@ then
 			mavlink start -d ${MAVLINK_COMPANION_DEVICE} -b 921600 -m onboard -r 80000 -x
 		fi
 		if param compare SYS_COMPANION 57600
-		then
-			mavlink start -d ${MAVLINK_COMPANION_DEVICE} -b 57600 -m onboard -r 5000 -x
+                then
+                        mavlink start -d ${MAVLINK_COMPANION_DEVICE} -b 57600 -m onboard -r 5000 -x
 		fi
 		if param compare SYS_COMPANION 460800
 		then
@@ -724,7 +724,7 @@ then
 		fi
 	fi
 
-	# lightware serial lidar sensor
+	# lightware serial lidar sensor		#yes
 	if param compare SENS_EN_SF0X 0
 	then
 	else
@@ -733,7 +733,7 @@ then
 		fi
 	fi
 
-	# lightware i2c lidar sensor
+	# lightware i2c lidar sensor		#yes
 	if param compare SENS_EN_SF1XX 0
 	then
 	else
@@ -742,7 +742,7 @@ then
 		fi
 	fi
 
-	# mb12xx sonar sensor
+	# mb12xx sonar sensor			#no
 	if param compare SENS_EN_MB12XX 1
 	then
 		if mb12xx start
@@ -750,7 +750,7 @@ then
 		fi
 	fi
 
-	# teraranger one tof sensor
+	# teraranger one tof sensor		#no
 	if param compare SENS_EN_TRONE 1
 	then
 		if trone start
@@ -788,8 +788,15 @@ then
 	if ver hwcmp AEROFC_V1
 	then
 	else
-		# Start MAVLink
-		mavlink start -r 800000 -d /dev/ttyACM0 -m config -x
+		# Start MAVLink  这是我修改的地方
+                if [ $LOG_FILE == /dev/null ]
+                  then
+                    # Try to get an USB console
+                    nshterm /dev/ttyACM0 &
+                  else
+                    mavlink start -r 800000 -d /dev/ttyACM0 -m config -x
+                  fi
+                # mavlink start -r 800000 -d /dev/ttyACM0 -m config -x
 	fi
 
 	#
@@ -876,14 +883,14 @@ then
 	#
 	# Multicopters setup
 	#
-	if [ $VEHICLE_TYPE == mc ]
+	if [ $VEHICLE_TYPE == mc ]		#yes
 	then
-		if [ $MIXER == none ]
+		if [ $MIXER == none ]		#yes
 		then
 			echo "Mixer undefined"
 		fi
 
-		if [ $MAV_TYPE == none ]
+		if [ $MAV_TYPE == none ]	#yes
 		then
 			# Use mixer to detect vehicle type
 			if [ $MIXER == quad_x -o $MIXER == quad_+ ]
@@ -942,7 +949,7 @@ then
 
 	#
 	# VTOL setup
-	#
+	#					#no
 	if [ $VEHICLE_TYPE == vtol ]
 	then
 		if [ $MIXER == none ]
@@ -985,7 +992,7 @@ then
 
 	#
 	# Rover setup
-	#
+	#					#no
 	if [ $VEHICLE_TYPE == rover ]
 	then
 		# 10 is MAV_TYPE_GROUND_ROVER
@@ -1004,7 +1011,7 @@ then
 	# For snapdragon, we need a passthrough mode
 	# Do not run any mavlink instances since we need the serial port for
 	# communication with Snapdragon.
-	#
+	#					#no
 	if [ $VEHICLE_TYPE == passthrough ]
 	then
 		mavlink stop-all
